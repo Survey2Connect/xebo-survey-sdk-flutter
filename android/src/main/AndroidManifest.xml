@@ -1,3 +1,9 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
   package="ai.xebo.xebo_survey_sdk">
+
+  <!-- Required for survey API calls and offline sync -->
+  <uses-permission android:name="android.permission.INTERNET"/>
+  <!-- Required by connectivity_plus to monitor network state -->
+  <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE"/>
+
 </manifest>

@@ -1,8 +1,22 @@
+// ─── Public API ───────────────────────────────────────────────────────────────
+export 'core/xebo_survey_manager.dart' show XeboSurveyManager;
 
-import 'xebo_survey_sdk_platform_interface.dart';
+// ─── Models ───────────────────────────────────────────────────────────────────
+export 'models/xebo_models.dart'
+    show
+        XeboConfig,
+        XeboThemeConfig,
+        XeboSurvey,
+        XeboQuestion,
+        XeboQuestionType,
+        XeboAnswer,
+        XeboAnswerValue,
+        XeboChoice,
+        XeboNPSLabels,
+        XeboConditionalFollowUp,
+        XeboSurveyPage,
+        XeboUserData,
+        XeboQueuedResponse;
 
-class XeboSurveySdk {
-  Future<String?> getPlatformVersion() {
-    return XeboSurveySdkPlatform.instance.getPlatformVersion();
-  }
-}
+// ─── Theme ────────────────────────────────────────────────────────────────────
+export 'theme/xebo_theme.dart' show configureTheme, getTheme, XeboTheme;

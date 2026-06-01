@@ -1,61 +1,105 @@
 import 'package:flutter/material.dart';
-import 'dart:async';
-
-import 'package:flutter/services.dart';
 import 'package:xebo_survey_sdk/xebo_survey_sdk.dart';
 
+// ─── Replace these with your real credentials ─────────────────────────────────
+const _apiKey = '232128adc3166d118bea1bade33928a0a2c7eb65dcf75a8c3e64086c676f3dd9';
+const _collectorId = '69e7303e3ec87c7aab7a3707';
+const _zone = 'az2'; // e.g. az1, az2, eu1
+
 void main() {
+  WidgetsFlutterBinding.ensureInitialized();
+
+  // Configure SDK on startup (pre-fetches survey in background)
+  XeboSurveyManager.instance.configure(
+    apiKey: _apiKey,
+    collectorId: _collectorId,
+    zone: _zone,
+  );
+
+  // Optional: set user identity
+  XeboSurveyManager.instance.setUser(const XeboUserData(
+    name: 'Test User',
+    email: 'test@example.com',
+    uniqueId: 'test-001',
+  ));
+
+  // Optional: customize theme
+  configureTheme(const XeboThemeConfig(
+    primaryColor: '#4F46E5',
+    cornerRadius: 12,
+  ));
+
   runApp(const MyApp());
 }
 
-class MyApp extends StatefulWidget {
+class MyApp extends StatelessWidget {
   const MyApp({super.key});
-
-  @override
-  State<MyApp> createState() => _MyAppState();
-}
-
-class _MyAppState extends State<MyApp> {
-  String _platformVersion = 'Unknown';
-  final _xeboSurveySdkPlugin = XeboSurveySdk();
-
-  @override
-  void initState() {
-    super.initState();
-    initPlatformState();
-  }
-
-  // Platform messages are asynchronous, so we initialize in an async method.
-  Future<void> initPlatformState() async {
-    String platformVersion;
-    // Platform messages may fail, so we use a try/catch PlatformException.
-    // We also handle the message potentially returning null.
-    try {
-      platformVersion =
-          await _xeboSurveySdkPlugin.getPlatformVersion() ?? 'Unknown platform version';
-    } on PlatformException {
-      platformVersion = 'Failed to get platform version.';
-    }
-
-    // If the widget was removed from the tree while the asynchronous platform
-    // message was in flight, we want to discard the reply rather than calling
-    // setState to update our non-existent appearance.
-    if (!mounted) return;
-
-    setState(() {
-      _platformVersion = platformVersion;
-    });
-  }
 
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      home: Scaffold(
-        appBar: AppBar(
-          title: const Text('Plugin example app'),
-        ),
-        body: Center(
-          child: Text('Running on: $_platformVersion\n'),
+      title: 'Xebo Survey SDK Test',
+      theme: ThemeData(
+        colorScheme: ColorScheme.fromSeed(seedColor: const Color(0xFF4F46E5)),
+        useMaterial3: true,
+      ),
+      home: const HomePage(),
+    );
+  }
+}
+
+class HomePage extends StatelessWidget {
+  const HomePage({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(
+        title: const Text('Xebo Survey SDK'),
+        backgroundColor: const Color(0xFF4F46E5),
+        foregroundColor: Colors.white,
+      ),
+      body: Center(
+        child: Padding(
+          padding: const EdgeInsets.all(24),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              const Icon(Icons.poll_outlined,
+                  size: 80, color: Color(0xFF4F46E5)),
+              const SizedBox(height: 24),
+              const Text(
+                'Xebo In-App Survey',
+                style: TextStyle(fontSize: 22, fontWeight: FontWeight.w700),
+              ),
+              const SizedBox(height: 8),
+              const Text(
+                'Tap the button below to trigger a survey.',
+                textAlign: TextAlign.center,
+                style: TextStyle(fontSize: 15, color: Colors.grey),
+              ),
+              const SizedBox(height: 40),
+              SizedBox(
+                width: double.infinity,
+                child: ElevatedButton(
+                  onPressed: () async {
+                    await XeboSurveyManager.instance
+                        .fetchAndPresentSurvey(context);
+                  },
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: const Color(0xFF4F46E5),
+                    foregroundColor: Colors.white,
+                    padding: const EdgeInsets.symmetric(vertical: 16),
+                    shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12)),
+                  ),
+                  child: const Text('Show Survey',
+                      style: TextStyle(
+                          fontSize: 16, fontWeight: FontWeight.w600)),
+                ),
+              ),
+            ],
+          ),
         ),
       ),
     );
