@@ -11,6 +11,9 @@ dependencies:
   flutter:
     sdk: flutter
   plugin_platform_interface: ^2.0.2
+  http: ^1.2.2
+  shared_preferences: ^2.3.2
+  connectivity_plus: ^6.0.5
 
 dev_dependencies:
   flutter_test:
