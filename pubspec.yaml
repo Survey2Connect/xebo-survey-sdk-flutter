@@ -1,7 +1,7 @@
 name: xebo_survey_sdk
-description: "A new Flutter plugin project."
-version: 0.0.1
-homepage:
+description: "Xebo in-app survey SDK for Flutter — supports NPS, ratings, choice, text and more question types with offline sync."
+version: 1.0.0
+homepage: https://github.com/Survey2Connect/xebo-survey-sdk-flutter
 
 environment:
   sdk: ^3.8.1
