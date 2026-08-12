@@ -2,9 +2,10 @@ import 'package:flutter/material.dart';
 import 'package:xebo_survey_sdk/xebo_survey_sdk.dart';
 
 // ─── Replace these with your real credentials ─────────────────────────────────
-const _apiKey = '232128adc3166d118bea1bade33928a0a2c7eb65dcf75a8c3e64086c676f3dd9';
-const _collectorId = '69e7303e3ec87c7aab7a3707';
-const _zone = 'az2'; // e.g. az1, az2, eu1
+const _apiKey = '2882fe60026036fbba6d4f4285d26adb833fdbbdef18532f8aae72734f34e9d9';
+const _collectorId = '2b08a2fc-cdc9-49cf-9b57-5679caeec6d8';
+const _surveyId = 'd660ae06-8ab7-4154-89ce-3b09cdca5833';
+const _zone = 'az4'; // e.g. az1, az2, az4
 
 void main() {
   WidgetsFlutterBinding.ensureInitialized();
@@ -94,6 +95,42 @@ class HomePage extends StatelessWidget {
                         borderRadius: BorderRadius.circular(12)),
                   ),
                   child: const Text('Show Survey',
+                      style: TextStyle(
+                          fontSize: 16, fontWeight: FontWeight.w600)),
+                ),
+              ),
+              const SizedBox(height: 12),
+              SizedBox(
+                width: double.infinity,
+                child: OutlinedButton(
+                  onPressed: () async {
+                    await XeboSurveyManager.instance.showInAppSurvey(
+                      context: context,
+                      surveyId: _surveyId,
+                      collectorId: _collectorId,
+                      zone: _zone,
+                      onLoading: () => debugPrint('[Example] onLoading'),
+                      onLoadFailed: (error) =>
+                          debugPrint('[Example] onLoadFailed: $error'),
+                      onCompleted: (response) =>
+                          debugPrint('[Example] onCompleted: $response'),
+                      onDismissed: () => debugPrint('[Example] onDismissed'),
+                      onPartialResponse: (response) =>
+                          debugPrint('[Example] onPartialResponse: $response'),
+                      onSubmissionSucceeded: () =>
+                          debugPrint('[Example] onSubmissionSucceeded'),
+                      onSubmissionFailed: (error) =>
+                          debugPrint('[Example] onSubmissionFailed: $error'),
+                    );
+                  },
+                  style: OutlinedButton.styleFrom(
+                    foregroundColor: const Color(0xFF4F46E5),
+                    side: const BorderSide(color: Color(0xFF4F46E5)),
+                    padding: const EdgeInsets.symmetric(vertical: 16),
+                    shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12)),
+                  ),
+                  child: const Text('Show In-App Survey (granular callbacks)',
                       style: TextStyle(
                           fontSize: 16, fontWeight: FontWeight.w600)),
                 ),

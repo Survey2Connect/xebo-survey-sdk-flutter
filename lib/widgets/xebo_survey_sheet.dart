@@ -18,7 +18,7 @@ class XeboSurveySheet extends StatefulWidget {
   final XeboSurvey survey;
   final void Function(List<XeboAnswer> answers, String startTime, String endTime) onSubmit;
   final void Function(String questionId, double secondsSpent) onQuestionTime;
-  final VoidCallback onDismiss;
+  final void Function(List<XeboAnswer> answersSoFar) onDismiss;
   final void Function(String url)? onRedirectURL;
 
   const XeboSurveySheet({
@@ -104,7 +104,7 @@ class _XeboSurveySheetState extends State<XeboSurveySheet> {
   }
 
   void _handleSkip() {
-    widget.onDismiss();
+    widget.onDismiss(_answers);
     Navigator.of(context).pop();
   }
 
