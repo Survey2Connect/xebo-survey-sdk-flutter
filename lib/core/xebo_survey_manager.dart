@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import '../models/xebo_models.dart';
 import '../theme/xebo_theme.dart' as xebo_theme;
 import '../widgets/xebo_survey_sheet.dart';
+import 'xebo_in_app_survey_service.dart';
 import 'xebo_network_service.dart';
 import 'xebo_offline_queue.dart';
 
@@ -138,12 +139,142 @@ class XeboSurveyManager {
           survey: _survey!,
           onSubmit: _onSessionSubmit,
           onQuestionTime: (qId, secs) => _timePerQues[qId] = secs,
-          onDismiss: () {},
+          onDismiss: (_) {},
         ),
       );
     } catch (e) {
       debugLog('[Xebo] fetchAndPresentSurvey failed: $e');
     }
+  }
+
+  // ─── In-app survey (own verify → draft → render → submit, granular callbacks) ─
+  //
+  // Fully separate from fetchAndPresentSurvey above: its own local re-entrancy
+  // flag, no shared state with `_survey`/`_collectorUUID`/`_bearerToken`, and its
+  // own dedicated networking (xebo_in_app_survey_service.dart) rather than the
+  // fetchCollector/fetchSurvey/submitResponse used there — this mirrors the real
+  // native iOS `XeboSurvey.inAppSurvey(...)` flow, which:
+  //   - fetches the survey *draft* directly by surveyId, with collectorId only as
+  //     a header (no separate collector→surveyId lookup);
+  //   - doesn't treat a failed key-verify as fatal — falls back to the raw api key;
+  //   - resolves collectorId to its uuid only at submission time, only if needed;
+  //   - fires onSurveyCompleted immediately on the last answer, submits in the
+  //     background, and auto-dismisses ~2s later regardless of submission outcome;
+  //   - fires onPartialResponse unconditionally on an early skip (even 0 answers).
+
+  bool _inAppSurveyActive = false;
+
+  /// Fetches and presents a survey with granular lifecycle callbacks mirroring
+  /// the native SDK's own verify → draft → render → submit session. `xApiKey`
+  /// defaults to the key passed to [configure] when empty.
+  Future<void> showInAppSurvey({
+    required BuildContext context,
+    required String surveyId,
+    required String collectorId,
+    required String zone,
+    String xApiKey = '',
+    XeboUserData? userData,
+    void Function()? onLoading,
+    void Function(String error)? onLoadFailed,
+    void Function(Map<String, dynamic> response)? onCompleted,
+    void Function()? onDismissed,
+    void Function(Map<String, dynamic> response)? onPartialResponse,
+    void Function()? onSubmissionSucceeded,
+    void Function(String error)? onSubmissionFailed,
+  }) async {
+    if (_inAppSurveyActive) {
+      throw StateError('An in-app survey session is already active.');
+    }
+    _inAppSurveyActive = true;
+    onLoading?.call();
+
+    final effectiveApiKey = xApiKey.isEmpty ? _apiKey : xApiKey;
+    final bearerToken = await inAppVerifyApiKey(effectiveApiKey);
+    final authHeader = inAppAuthHeader(bearerToken, effectiveApiKey);
+
+    XeboSurvey survey;
+    try {
+      survey = await fetchInAppSurveyDraft(
+        zone: zone,
+        surveyId: surveyId,
+        collectorId: collectorId,
+        authHeader: authHeader,
+      );
+    } catch (e) {
+      _inAppSurveyActive = false;
+      onLoadFailed?.call(e.toString());
+      return;
+    }
+
+    if (!context.mounted) {
+      _inAppSurveyActive = false;
+      return;
+    }
+
+    var completed = false;
+
+    await showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      enableDrag: false,
+      builder: (sheetContext) => XeboSurveySheet(
+        survey: survey,
+        onSubmit: (answers, startTime, endTime) {
+          completed = true;
+          onCompleted?.call(buildInAppResponsePayload(
+            surveyId: surveyId,
+            collectorId: collectorId,
+            answers: answers,
+          ));
+
+          // Submission runs in the background; the sheet auto-dismisses ~2s later
+          // regardless of the outcome, matching XeboInAppSurveySession.complete().
+          () async {
+            final resolvedCollectorId = await resolveInAppCollectorUUID(
+              zone: zone,
+              collectorId: collectorId,
+              authHeader: authHeader,
+            );
+            try {
+              final ok = await submitInAppSurveyResponse(
+                zone: zone,
+                surveyId: surveyId,
+                collectorId: resolvedCollectorId,
+                authHeader: authHeader,
+                answers: answers,
+                isIOS: Platform.isIOS,
+                osVersionRaw: _osVersion,
+                userData: userData,
+              );
+              if (!ok) throw Exception('HTTP error');
+              onSubmissionSucceeded?.call();
+            } catch (e) {
+              onSubmissionFailed?.call(e.toString());
+            }
+          }();
+
+          Future.delayed(const Duration(seconds: 2), () {
+            if (sheetContext.mounted && Navigator.of(sheetContext).canPop()) {
+              Navigator.of(sheetContext).pop();
+            }
+          });
+        },
+        onQuestionTime: (_, __) {},
+        onDismiss: (answersSoFar) {
+          if (!completed) {
+            onPartialResponse?.call(buildInAppResponsePayload(
+              surveyId: surveyId,
+              collectorId: collectorId,
+              answers: answersSoFar,
+            ));
+          }
+        },
+      ),
+    );
+
+    _inAppSurveyActive = false;
+    onDismissed?.call();
   }
 
   // ─── Submission ──────────────────────────────────────────────────────────────
