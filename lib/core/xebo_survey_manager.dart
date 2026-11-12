@@ -189,7 +189,7 @@ class XeboSurveyManager {
     onLoading?.call();
 
     final effectiveApiKey = xApiKey.isEmpty ? _apiKey : xApiKey;
-    final bearerToken = await inAppVerifyApiKey(effectiveApiKey);
+    final bearerToken = await inAppVerifyApiKey(zone, effectiveApiKey);
     final authHeader = inAppAuthHeader(bearerToken, effectiveApiKey);
 
     XeboSurvey survey;

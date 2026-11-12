@@ -7,7 +7,7 @@ import 'dart:convert';
 import 'package:http/http.dart' as http;
 import '../models/xebo_api_models.dart';
 import '../models/xebo_models.dart';
-import 'xebo_network_service.dart' show parseSurvey;
+import 'xebo_network_service.dart' show parseSurvey, buildVerifyURL, buildFeedbackBaseURL;
 
 bool isValidUuid(String value) {
   return RegExp(
@@ -15,12 +15,12 @@ bool isValidUuid(String value) {
   ).hasMatch(value);
 }
 
-/// GET https://api.xebo.ai/api/v1/api-key/verify — zone-independent. Returns null (rather than
+/// GET {api|pit-api}.xebo.ai/api/v1/api-key/verify?zone= (see buildVerifyURL). Returns null (rather than
 /// throwing) on any failure, matching the native SDK: verify failing isn't fatal, callers fall
 /// back to the raw api key as an `x-api-key` header on subsequent requests.
-Future<String?> inAppVerifyApiKey(String apiKey) async {
+Future<String?> inAppVerifyApiKey(String zone, String apiKey) async {
   try {
-    final uri = Uri.parse('https://api.xebo.ai/api/v1/api-key/verify');
+    final uri = Uri.parse(buildVerifyURL(zone));
     final res = await http.get(uri, headers: {'x-api-key': apiKey});
     if (res.statusCode < 200 || res.statusCode >= 300) return null;
     final json = jsonDecode(res.body) as Map<String, dynamic>;
@@ -105,7 +105,7 @@ Map<String, dynamic> buildInAppResponsePayload({
   };
 }
 
-/// POST https://{zone}-feedback-api.xebo.ai/v3/survey-participation/{surveyId}/response/create-response
+/// POST {buildFeedbackBaseURL(zone)}/v3/survey-participation/{surveyId}/response/create-response
 /// `mode: "sdk"` and `browser: "other"` intentionally — the backend validates browser against a
 /// real-browser enum and 400s the whole submission for anything else. No start/end time or
 /// quality flags — the in-app survey session doesn't track timing.
@@ -120,7 +120,7 @@ Future<bool> submitInAppSurveyResponse({
   XeboUserData? userData,
 }) async {
   final uri = Uri.parse(
-      'https://$zone-feedback-api.xebo.ai/v3/survey-participation/$surveyId/response/create-response');
+      '${buildFeedbackBaseURL(zone)}/v3/survey-participation/$surveyId/response/create-response');
 
   final customVariables = <String, String>{};
   if (userData != null) {
