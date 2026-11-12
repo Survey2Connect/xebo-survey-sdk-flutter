@@ -6,8 +6,15 @@ import '../models/xebo_models.dart';
 // ─── URL helpers ──────────────────────────────────────────────────────────────
 
 String buildBaseURL(String zone) => 'https://$zone-api.xebo.ai';
-String buildFeedbackBaseURL(String zone) => 'https://$zone-feedback-api.xebo.ai';
-const String _verifyURL = 'https://api.xebo.ai/api/v1/api-key/verify';
+// UAT serves survey-participation on the main api host; other zones use -feedback-api.
+String buildFeedbackBaseURL(String zone) => zone.startsWith('uat-')
+    ? 'https://$zone-api.xebo.ai'
+    : 'https://$zone-feedback-api.xebo.ai';
+// UAT zones verify via pit-api; all other zones via the global api host.
+String buildVerifyURL(String zone) {
+  final host = zone.startsWith('uat-') ? 'pit-api.xebo.ai' : 'api.xebo.ai';
+  return 'https://$host/api/v1/api-key/verify?zone=${Uri.encodeComponent(zone)}';
+}
 
 // ─── HTML stripping ───────────────────────────────────────────────────────────
 
@@ -269,7 +276,7 @@ XeboSurvey parseSurvey(APISurveyData data) {
 // ─── Step 0: Verify API key → bearer token ────────────────────────────────────
 
 Future<String> verifyApiKey(String zone, String apiKey) async {
-  final uri = Uri.parse('$_verifyURL?zone=${Uri.encodeComponent(zone)}');
+  final uri = Uri.parse(buildVerifyURL(zone));
   debugLog('[Xebo Step 0] Verifying API key — $uri');
 
   final res = await http.get(uri, headers: {'x-api-key': apiKey});
